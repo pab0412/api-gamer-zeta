@@ -1,7 +1,7 @@
 // ventas/ventas.service.ts
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Between, Repository } from 'typeorm';
 import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
 import { Venta } from './entities/venta.entity';
@@ -104,6 +104,23 @@ export class VentasService {
     }
 
     return await this.ventasRepository.save(venta);
+  }
+
+  async findVentasDiarias() {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const manana = new Date(hoy);
+    manana.setDate(manana.getDate() + 1);
+
+    return await this.ventasRepository.find({
+      where: {
+        fecha: Between(hoy, manana),
+        estado: 'completada',
+      },
+      relations: ['usuario', 'boleta'],
+      order: { fecha: 'DESC' },
+    });
   }
 
   async remove(id: number) {

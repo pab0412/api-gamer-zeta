@@ -40,6 +40,12 @@ export class VentasController {
     return this.ventasService.update(+id, updateVentaDto);
   }
 
+  @Get('diarias')
+  @ApiOperation({ summary: 'Obtener ventas del día' })
+  async ventasDiarias() {
+    return this.ventasService.findVentasDiarias();
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Anular una venta' })
   remove(@Param('id') id: string) {
