@@ -18,6 +18,7 @@ export class VentasService {
   ) {}
 
   async create(createVentaDto: CreateVentaDto) {
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { detalleProductos, cliente, rut } = createVentaDto as any;
 
     let subtotal = 0;
@@ -37,7 +38,6 @@ export class VentasService {
       const subtotalProducto = precioUnitario * item.cantidad;
       subtotal += subtotalProducto;
 
-      // @ts-ignore
       detalleCompleto.push({
         productoId: producto.id,
         nombre: producto.nombre,
@@ -46,11 +46,9 @@ export class VentasService {
         subtotal: subtotalProducto,
       });
 
-      // Actualizar stock
       await this.productosService.actualizarStock(producto.id, item.cantidad);
     }
 
-    // Calcular IVA (19% en Chile)
     const iva = subtotal * 0.19;
     const total = subtotal + iva;
 
@@ -65,17 +63,37 @@ export class VentasService {
       estado: 'completada',
     });
 
+    // ✅ DEBUG CRÍTICO
+    console.log('🔍 VENTA ANTES SAVE:', {
+      id: venta.id,
+      usuarioId: venta.usuarioId,
+      total: venta.total
+    });
+
     const ventaGuardada = await this.ventasRepository.save(venta);
 
-    // Generar boleta si hay datos de cliente
+    // ✅ DEBUG RETORNO
+    console.log('✅ VENTA GUARDADA:', {
+      id: ventaGuardada.id,
+      usuarioId: ventaGuardada.usuarioId,
+      total: ventaGuardada.total
+    });
+
     const boleta = await this.boletasService.generarBoletaParaVenta(
       ventaGuardada,
       cliente,
       rut,
     );
+    
 
-    return { ...ventaGuardada, boleta };
+    // @ts-ignore
+    return {
+      id: ventaGuardada.id,
+      ...ventaGuardada,
+      boleta
+    };
   }
+
 
   async findAll() {
     return await this.ventasRepository.find({

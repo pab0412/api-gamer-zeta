@@ -13,54 +13,33 @@ export class ProductosService implements OnModuleInit {
     private productosRepository: Repository<Producto>,
   ) {}
 
-  // Este método se ejecuta automáticamente cuando inicia la app
   async onModuleInit() {
     await this.cargarProductosSiNoExisten();
   }
 
   private async cargarProductosSiNoExisten() {
-    // Verificar si ya hay productos
     const count = await this.productosRepository.count();
 
     if (count === 0) {
-      console.log('No hay productos, cargando datos iniciales...');
-
+      console.log('📦 Cargando productos iniciales...');
       for (const productoData of productosIniciales) {
         const producto = this.productosRepository.create(productoData);
         await this.productosRepository.save(producto);
       }
-
-      console.log('Productos cargados exitosamente');
-    } else {
-      console.log('Productos ya existen en la base de datos');
+      console.log('✅ Productos cargados exitosamente');
     }
-  }
-
-  async cargarProductosIniciales() {
-    const productosCreados = [];
-
-    for (const productoData of productosIniciales) {
-      const producto = this.productosRepository.create(productoData);
-      const productoGuardado = await this.productosRepository.save(producto);
-      // @ts-ignore
-      productosCreados.push(productoGuardado);
-    }
-
-    return {
-      mensaje: 'Productos cargados exitosamente',
-      cantidad: productosCreados.length,
-      productos: productosCreados,
-    };
   }
 
   async create(createProductoDto: CreateProductoDto) {
-    const producto = this.productosRepository.create(createProductoDto);
+    const producto = this.productosRepository.create({
+      ...createProductoDto,
+      activo: true, // Siempre se crea como activo
+    });
     return await this.productosRepository.save(producto);
   }
 
   async findAll() {
     return await this.productosRepository.find({
-      where: { activo: true },
       order: { nombre: 'ASC' },
     });
   }
@@ -85,9 +64,7 @@ export class ProductosService implements OnModuleInit {
 
   async update(id: number, updateProductoDto: UpdateProductoDto) {
     const producto = await this.findOne(id);
-
     Object.assign(producto, updateProductoDto);
-
     return await this.productosRepository.save(producto);
   }
 

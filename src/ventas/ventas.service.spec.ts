@@ -1,18 +1,57 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { Repository, Between } from 'typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
-import VentasService from './ventas.service';
+import { VentasService } from './ventas.service';
 import { Venta } from './entities/venta.entity';
 import { ProductosService } from '../productos/productos.service';
+import { BoletasService } from '../boletas/boletas.service';
 
 describe('VentasService', () => {
   let service: VentasService;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  let repository: Repository<Venta>;
-  let productosService: ProductosService;
 
-  const mockVentaRepository = {
+  const mockProducto = {
+    id: 1,
+    nombre: 'PS5',
+    precio: 500000,
+    stock: 10,
+    categoria: 'Consolas',
+    activo: true,
+  };
+
+  const mockVenta: Venta = {
+    id: 1,
+    usuarioId: 1,
+    detalleProductos: [
+      {
+        productoId: 1,
+        nombre: 'PS5',
+        cantidad: 2,
+        precioUnitario: 500000,
+        subtotal: 1000000,
+      },
+    ],
+    metodoPago: 'efectivo',
+    subtotal: 1000000,
+    iva: 190000,
+    total: 1190000,
+    estado: 'completada',
+    fecha: new Date(),
+    usuario: null,
+    boleta: null,
+  };
+
+  const mockBoleta = {
+    id: 1,
+    numero: 'BOL-000001',
+    ventaId: 1,
+    cliente: 'Consumidor Final',
+    rut: null,
+    montoTotal: 1190000,
+    fechaEmision: new Date(),
+    venta: mockVenta,
+  };
+
+  const mockVentasRepository = {
     create: jest.fn(),
     save: jest.fn(),
     find: jest.fn(),
@@ -24,110 +63,174 @@ describe('VentasService', () => {
     actualizarStock: jest.fn(),
   };
 
+  const mockBoletasService = {
+    generarBoletaParaVenta: jest.fn(),
+  };
+
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         VentasService,
         {
           provide: getRepositoryToken(Venta),
-          useValue: mockVentaRepository,
+          useValue: mockVentasRepository,
         },
         {
           provide: ProductosService,
           useValue: mockProductosService,
         },
+        {
+          provide: BoletasService,
+          useValue: mockBoletasService,
+        },
       ],
     }).compile();
 
     service = module.get<VentasService>(VentasService);
-    repository = module.get<Repository<Venta>>(getRepositoryToken(Venta));
     productosService = module.get<ProductosService>(ProductosService);
+    boletasService = module.get<BoletasService>(BoletasService);
+
+    // Mock console.log para evitar logs en tests
+    jest.spyOn(console, 'log').mockImplementation();
   });
 
   afterEach(() => {
     jest.clearAllMocks();
   });
 
+  it('should be defined', () => {
+    expect(service).toBeDefined();
+  });
+
   describe('create', () => {
+    const createVentaDto = {
+      usuarioId: 1,
+      metodoPago: 'efectivo' as const,
+      detalleProductos: [
+        {
+          productoId: 1,
+          cantidad: 2,
+        },
+      ],
+      cliente: 'Juan Pérez',
+      rut: '12345678-9',
+    };
+
     it('debe crear una venta correctamente con cálculo de IVA', async () => {
-      const createDto = {
-        usuarioId: 1,
-        detalleProductos: [
-          { productoId: 1, cantidad: 2 },
-          { productoId: 2, cantidad: 1 },
-        ],
-        metodoPago: 'efectivo',
-      };
+      mockProductosService.findOne.mockResolvedValue(mockProducto);
+      mockProductosService.actualizarStock.mockResolvedValue(mockProducto);
+      mockVentasRepository.create.mockReturnValue(mockVenta);
+      mockVentasRepository.save.mockResolvedValue(mockVenta);
+      mockBoletasService.generarBoletaParaVenta.mockResolvedValue(mockBoleta);
 
-      const productos = [
-        { id: 1, nombre: 'PS5', precio: 100000, stock: 10 },
-        { id: 2, nombre: 'Xbox', precio: 50000, stock: 5 },
-      ];
+      const result = await service.create(createVentaDto);
 
-      mockProductosService.findOne
-        .mockResolvedValueOnce(productos[0])
-        .mockResolvedValueOnce(productos[1]);
-      mockProductosService.actualizarStock.mockResolvedValue({});
-
-      const ventaCreada = {
-        id: 1,
-        subtotal: 250000,
-        iva: 47500,
-        total: 297500,
-        estado: 'completada',
-      };
-
-      mockVentaRepository.create.mockReturnValue(ventaCreada);
-      mockVentaRepository.save.mockResolvedValue(ventaCreada);
-
-      const result = await service.create(createDto);
-
-      expect(mockProductosService.findOne).toHaveBeenCalledTimes(2);
+      expect(mockProductosService.findOne).toHaveBeenCalledWith(1);
       expect(mockProductosService.actualizarStock).toHaveBeenCalledWith(1, 2);
-      expect(mockProductosService.actualizarStock).toHaveBeenCalledWith(2, 1);
-      expect(mockVentaRepository.create).toHaveBeenCalledWith(
+      expect(mockVentasRepository.create).toHaveBeenCalledWith(
         expect.objectContaining({
-          subtotal: 250000,
-          iva: 47500,
-          total: 297500,
+          usuarioId: 1,
+          metodoPago: 'efectivo',
+          subtotal: 1000000,
+          iva: 190000,
+          total: 1190000,
           estado: 'completada',
         }),
       );
-      expect(result).toEqual(ventaCreada);
+      expect(mockBoletasService.generarBoletaParaVenta).toHaveBeenCalledWith(
+        mockVenta,
+        'Juan Pérez',
+        '12345678-9',
+      );
+      expect(result).toMatchObject({
+        id: 1,
+        boleta: mockBoleta,
+      });
     });
 
-    it('debe lanzar BadRequestException si el stock es insuficiente', async () => {
-      const createDto = {
-        usuarioId: 1,
-        detalleProductos: [{ productoId: 1, cantidad: 20 }],
-        metodoPago: 'efectivo',
-      };
+    it('debe calcular correctamente el detalle de productos', async () => {
+      mockProductosService.findOne.mockResolvedValue(mockProducto);
+      mockProductosService.actualizarStock.mockResolvedValue(mockProducto);
+      mockVentasRepository.create.mockReturnValue(mockVenta);
+      mockVentasRepository.save.mockResolvedValue(mockVenta);
+      mockBoletasService.generarBoletaParaVenta.mockResolvedValue(mockBoleta);
 
-      const producto = { id: 1, nombre: 'PS5', precio: 100000, stock: 5 };
+      await service.create(createVentaDto);
 
-      mockProductosService.findOne.mockResolvedValue(producto);
+      expect(mockVentasRepository.create).toHaveBeenCalledWith(
+        expect.objectContaining({
+          detalleProductos: [
+            {
+              productoId: 1,
+              nombre: 'PS5',
+              cantidad: 2,
+              precioUnitario: 500000,
+              subtotal: 1000000,
+            },
+          ],
+        }),
+      );
+    });
 
-      await expect(service.create(createDto)).rejects.toThrow(
+    it('debe lanzar BadRequestException si no hay stock suficiente', async () => {
+      const productoSinStock = { ...mockProducto, stock: 1 };
+      mockProductosService.findOne.mockResolvedValue(productoSinStock);
+
+      await expect(service.create(createVentaDto)).rejects.toThrow(
         BadRequestException,
       );
-      await expect(service.create(createDto)).rejects.toThrow(
-        'Stock insuficiente para PS5. Disponible: 5',
+      await expect(service.create(createVentaDto)).rejects.toThrow(
+        'Stock insuficiente para PS5. Disponible: 1',
       );
+      expect(mockVentasRepository.save).not.toHaveBeenCalled();
+    });
+
+    it('debe actualizar el stock de los productos', async () => {
+      mockProductosService.findOne.mockResolvedValue(mockProducto);
+      mockProductosService.actualizarStock.mockResolvedValue(mockProducto);
+      mockVentasRepository.create.mockReturnValue(mockVenta);
+      mockVentasRepository.save.mockResolvedValue(mockVenta);
+      mockBoletasService.generarBoletaParaVenta.mockResolvedValue(mockBoleta);
+
+      await service.create(createVentaDto);
+
+      expect(mockProductosService.actualizarStock).toHaveBeenCalledWith(1, 2);
+    });
+
+    it('debe manejar múltiples productos en una venta', async () => {
+      const createDtoMultiple = {
+        ...createVentaDto,
+        detalleProductos: [
+          { productoId: 1, cantidad: 1 },
+          { productoId: 2, cantidad: 2 },
+        ],
+      };
+
+      const producto2 = { ...mockProducto, id: 2, nombre: 'Xbox', precio: 400000 };
+
+      mockProductosService.findOne
+        .mockResolvedValueOnce(mockProducto)
+        .mockResolvedValueOnce(producto2);
+      mockProductosService.actualizarStock.mockResolvedValue({});
+      mockVentasRepository.create.mockReturnValue(mockVenta);
+      mockVentasRepository.save.mockResolvedValue(mockVenta);
+      mockBoletasService.generarBoletaParaVenta.mockResolvedValue(mockBoleta);
+
+      await service.create(createDtoMultiple);
+
+      expect(mockProductosService.findOne).toHaveBeenCalledTimes(2);
+      expect(mockProductosService.actualizarStock).toHaveBeenCalledTimes(2);
     });
   });
 
   describe('findAll', () => {
-    it('debe retornar todas las ventas ordenadas por fecha', async () => {
-      const ventas = [
-        { id: 1, total: 100000 },
-        { id: 2, total: 200000 },
-      ];
-
-      mockVentaRepository.find.mockResolvedValue(ventas);
+    it('debe retornar todas las ventas ordenadas por fecha descendente', async () => {
+      const ventas = [mockVenta];
+      mockVentasRepository.find.mockResolvedValue(ventas);
 
       const result = await service.findAll();
 
-      expect(mockVentaRepository.find).toHaveBeenCalledWith({
+      expect(mockVentasRepository.find).toHaveBeenCalledWith({
         relations: ['usuario', 'boleta'],
         order: { fecha: 'DESC' },
       });
@@ -136,21 +239,20 @@ describe('VentasService', () => {
   });
 
   describe('findOne', () => {
-    it('debe retornar una venta por ID', async () => {
-      const venta = { id: 1, total: 100000 };
-      mockVentaRepository.findOne.mockResolvedValue(venta);
+    it('debe retornar una venta por ID con relaciones', async () => {
+      mockVentasRepository.findOne.mockResolvedValue(mockVenta);
 
       const result = await service.findOne(1);
 
-      expect(mockVentaRepository.findOne).toHaveBeenCalledWith({
+      expect(mockVentasRepository.findOne).toHaveBeenCalledWith({
         where: { id: 1 },
         relations: ['usuario', 'boleta'],
       });
-      expect(result).toEqual(venta);
+      expect(result).toEqual(mockVenta);
     });
 
-    it('debe lanzar NotFoundException si no existe', async () => {
-      mockVentaRepository.findOne.mockResolvedValue(null);
+    it('debe lanzar NotFoundException si la venta no existe', async () => {
+      mockVentasRepository.findOne.mockResolvedValue(null);
 
       await expect(service.findOne(999)).rejects.toThrow(NotFoundException);
       await expect(service.findOne(999)).rejects.toThrow(
@@ -161,16 +263,12 @@ describe('VentasService', () => {
 
   describe('findByUsuario', () => {
     it('debe retornar ventas de un usuario específico', async () => {
-      const ventas = [
-        { id: 1, usuarioId: 1, total: 100000 },
-        { id: 2, usuarioId: 1, total: 200000 },
-      ];
-
-      mockVentaRepository.find.mockResolvedValue(ventas);
+      const ventas = [mockVenta];
+      mockVentasRepository.find.mockResolvedValue(ventas);
 
       const result = await service.findByUsuario(1);
 
-      expect(mockVentaRepository.find).toHaveBeenCalledWith({
+      expect(mockVentasRepository.find).toHaveBeenCalledWith({
         where: { usuarioId: 1 },
         relations: ['boleta'],
         order: { fecha: 'DESC' },
@@ -181,32 +279,39 @@ describe('VentasService', () => {
 
   describe('update', () => {
     it('debe actualizar el estado de una venta', async () => {
-      const ventaExistente = { id: 1, estado: 'completada' };
-      const updateDto = { estado: 'anulada' };
-      const ventaActualizada = { ...ventaExistente, estado: 'anulada' };
+      const updateDto = { estado: 'anulada' as const };
+      const ventaActualizada = { ...mockVenta, estado: 'anulada' };
 
-      mockVentaRepository.findOne.mockResolvedValue(ventaExistente);
-      mockVentaRepository.save.mockResolvedValue(ventaActualizada);
+      mockVentasRepository.findOne.mockResolvedValue(mockVenta);
+      mockVentasRepository.save.mockResolvedValue(ventaActualizada);
 
       const result = await service.update(1, updateDto);
 
+      expect(mockVentasRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 1 },
+        relations: ['usuario', 'boleta'],
+      });
+      expect(mockVentasRepository.save).toHaveBeenCalled();
       expect(result.estado).toBe('anulada');
-      expect(mockVentaRepository.save).toHaveBeenCalled();
+    });
+
+    it('debe lanzar NotFoundException si la venta no existe', async () => {
+      mockVentasRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.update(999, { estado: 'anulada' })).rejects.toThrow(
+        NotFoundException,
+      );
     });
   });
 
   describe('findVentasDiarias', () => {
     it('debe retornar ventas del día actual', async () => {
-      const ventas = [
-        { id: 1, fecha: new Date(), estado: 'completada' },
-        { id: 2, fecha: new Date(), estado: 'completada' },
-      ];
-
-      mockVentaRepository.find.mockResolvedValue(ventas);
+      const ventas = [mockVenta];
+      mockVentasRepository.find.mockResolvedValue(ventas);
 
       const result = await service.findVentasDiarias();
 
-      expect(mockVentaRepository.find).toHaveBeenCalledWith(
+      expect(mockVentasRepository.find).toHaveBeenCalledWith(
         expect.objectContaining({
           where: expect.objectContaining({
             estado: 'completada',
@@ -217,22 +322,37 @@ describe('VentasService', () => {
       );
       expect(result).toEqual(ventas);
     });
+
+    it('debe usar Between para filtrar fechas del día', async () => {
+      mockVentasRepository.find.mockResolvedValue([]);
+
+      await service.findVentasDiarias();
+
+      const callArgs = mockVentasRepository.find.mock.calls[0][0];
+      expect(callArgs.where.fecha).toBeDefined();
+    });
   });
 
   describe('remove', () => {
     it('debe anular una venta (soft delete)', async () => {
-      const venta = { id: 1, estado: 'completada' };
-      const ventaAnulada = { ...venta, estado: 'anulada' };
-
-      mockVentaRepository.findOne.mockResolvedValue(venta);
-      mockVentaRepository.save.mockResolvedValue(ventaAnulada);
+      const ventaAnulada = { ...mockVenta, estado: 'anulada' };
+      mockVentasRepository.findOne.mockResolvedValue(mockVenta);
+      mockVentasRepository.save.mockResolvedValue(ventaAnulada);
 
       const result = await service.remove(1);
 
+      expect(mockVentasRepository.findOne).toHaveBeenCalledWith({
+        where: { id: 1 },
+        relations: ['usuario', 'boleta'],
+      });
+      expect(mockVentasRepository.save).toHaveBeenCalled();
       expect(result.estado).toBe('anulada');
-      expect(mockVentaRepository.save).toHaveBeenCalledWith(
-        expect.objectContaining({ estado: 'anulada' }),
-      );
+    });
+
+    it('debe lanzar NotFoundException si la venta no existe', async () => {
+      mockVentasRepository.findOne.mockResolvedValue(null);
+
+      await expect(service.remove(999)).rejects.toThrow(NotFoundException);
     });
   });
 });

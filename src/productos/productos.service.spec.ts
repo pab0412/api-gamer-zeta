@@ -37,6 +37,30 @@ describe('ProductosService', () => {
     jest.clearAllMocks();
   });
 
+  describe('onModuleInit', () => {
+    it('debe cargar productos si la base de datos está vacía', async () => {
+      mockProductoRepository.count.mockResolvedValue(0);
+      mockProductoRepository.create.mockReturnValue({ id: 1, nombre: 'Test' });
+      mockProductoRepository.save.mockResolvedValue({ id: 1, nombre: 'Test' });
+
+      await service.onModuleInit();
+
+      expect(mockProductoRepository.count).toHaveBeenCalledTimes(1);
+      expect(mockProductoRepository.create).toHaveBeenCalled();
+      expect(mockProductoRepository.save).toHaveBeenCalled();
+    });
+
+    it('no debe cargar productos si ya existen datos', async () => {
+      mockProductoRepository.count.mockResolvedValue(5);
+
+      await service.onModuleInit();
+
+      expect(mockProductoRepository.count).toHaveBeenCalledTimes(1);
+      expect(mockProductoRepository.create).not.toHaveBeenCalled();
+      expect(mockProductoRepository.save).not.toHaveBeenCalled();
+    });
+  });
+
   describe('create', () => {
     it('debe crear un producto correctamente', async () => {
       const createDto = {
@@ -45,21 +69,25 @@ describe('ProductosService', () => {
         stock: 10,
         categoria: 'Consolas',
       };
-      const producto = { id: 1, ...createDto };
+      const producto = { id: 1, ...createDto, activo: true };
 
       mockProductoRepository.create.mockReturnValue(producto);
       mockProductoRepository.save.mockResolvedValue(producto);
 
       const result = await service.create(createDto);
 
-      expect(mockProductoRepository.create).toHaveBeenCalledWith(createDto);
+      expect(mockProductoRepository.create).toHaveBeenCalledWith({
+        ...createDto,
+        activo: true,
+      });
       expect(mockProductoRepository.save).toHaveBeenCalledWith(producto);
       expect(result).toEqual(producto);
+      expect(result.activo).toBe(true);
     });
   });
 
   describe('findAll', () => {
-    it('debe retornar todos los productos activos ordenados', async () => {
+    it('debe retornar todos los productos ordenados', async () => {
       const productos = [
         { id: 1, nombre: 'PS5', activo: true },
         { id: 2, nombre: 'Xbox', activo: true },
@@ -70,7 +98,6 @@ describe('ProductosService', () => {
       const result = await service.findAll();
 
       expect(mockProductoRepository.find).toHaveBeenCalledWith({
-        where: { activo: true },
         order: { nombre: 'ASC' },
       });
       expect(result).toEqual(productos);

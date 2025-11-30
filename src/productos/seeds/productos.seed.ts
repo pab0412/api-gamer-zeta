@@ -4,7 +4,7 @@ export const productosIniciales = [
     descripcion: 'Consola de última generación de Sony',
     precio: 599990,
     stock: 10,
-    categoria: 'consola',
+    categoria: 'Consolas',
     imagen: 'ps5.jpg',
   },
   {
@@ -12,7 +12,7 @@ export const productosIniciales = [
     descripcion: 'Consola de Microsoft con 4K nativo',
     precio: 549990,
     stock: 8,
-    categoria: 'consola',
+    categoria: 'Consolas',
     imagen: 'xbox-series-x.jpg',
   },
   {
@@ -20,7 +20,7 @@ export const productosIniciales = [
     descripcion: 'Consola híbrida con pantalla OLED',
     precio: 399990,
     stock: 15,
-    categoria: 'consola',
+    categoria: 'Consolas',
     imagen: 'switch-oled.jpg',
   },
   {
@@ -28,7 +28,7 @@ export const productosIniciales = [
     descripcion: 'Juego exclusivo de PS4/PS5',
     precio: 49990,
     stock: 25,
-    categoria: 'juego',
+    categoria: 'Juegos PS5',
     imagen: 'tlou2.jpg',
   },
   {
@@ -36,7 +36,7 @@ export const productosIniciales = [
     descripcion: 'Continuación de la saga de Kratos',
     precio: 59990,
     stock: 20,
-    categoria: 'juego',
+    categoria: 'Juegos PS5',
     imagen: 'gow-ragnarok.jpg',
   },
   {
@@ -44,7 +44,7 @@ export const productosIniciales = [
     descripcion: 'El Master Chief regresa',
     precio: 54990,
     stock: 18,
-    categoria: 'juego',
+    categoria: 'Juegos Xbox',
     imagen: 'halo-infinite.jpg',
   },
   {
@@ -52,7 +52,7 @@ export const productosIniciales = [
     descripcion: 'Nueva aventura de Link',
     precio: 59990,
     stock: 22,
-    categoria: 'juego',
+    categoria: 'Juegos Switch',
     imagen: 'zelda-totk.jpg',
   },
   {
@@ -60,7 +60,7 @@ export const productosIniciales = [
     descripcion: 'Control inalámbrico para PS5',
     precio: 69990,
     stock: 30,
-    categoria: 'accesorio',
+    categoria: 'Accesorios',
     imagen: 'dualsense.jpg',
   },
   {
@@ -68,7 +68,7 @@ export const productosIniciales = [
     descripcion: 'Control para Xbox Series X/S',
     precio: 59990,
     stock: 28,
-    categoria: 'accesorio',
+    categoria: 'Accesorios',
     imagen: 'xbox-controller.jpg',
   },
   {
@@ -76,7 +76,7 @@ export const productosIniciales = [
     descripcion: 'Control profesional para Switch',
     precio: 69990,
     stock: 20,
-    categoria: 'accesorio',
+    categoria: 'Accesorios',
     imagen: 'pro-controller.jpg',
   },
   {
@@ -84,7 +84,7 @@ export const productosIniciales = [
     descripcion: 'Auriculares gaming con sonido 7.1',
     precio: 89990,
     stock: 15,
-    categoria: 'accesorio',
+    categoria: 'Accesorios',
     imagen: 'hyperx-cloud2.jpg',
   },
   {
@@ -92,7 +92,7 @@ export const productosIniciales = [
     descripcion: 'Teclado gaming RGB mecánico',
     precio: 129990,
     stock: 12,
-    categoria: 'pc',
+    categoria: 'Periféricos',
     imagen: 'razer-blackwidow.jpg',
   },
   {
@@ -100,7 +100,7 @@ export const productosIniciales = [
     descripcion: 'Mouse gaming de alta precisión',
     precio: 69990,
     stock: 25,
-    categoria: 'pc',
+    categoria: 'Periféricos',
     imagen: 'logitech-g502.jpg',
   },
   {
@@ -108,7 +108,7 @@ export const productosIniciales = [
     descripcion: 'Silla ergonómica para gaming',
     precio: 299990,
     stock: 8,
-    categoria: 'pc',
+    categoria: 'Muebles',
     imagen: 'dxracer.jpg',
   },
   {
@@ -116,7 +116,7 @@ export const productosIniciales = [
     descripcion: 'Monitor gaming con alta tasa de refresco',
     precio: 399990,
     stock: 10,
-    categoria: 'pc',
+    categoria: 'Monitores',
     imagen: 'asus-rog-monitor.jpg',
   },
 ];
