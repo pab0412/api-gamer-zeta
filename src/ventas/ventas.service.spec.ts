@@ -2,7 +2,7 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { Repository, Between } from 'typeorm';
 import { NotFoundException, BadRequestException } from '@nestjs/common';
-import { VentasService } from './ventas.service';
+import VentasService from './ventas.service';
 import { Venta } from './entities/venta.entity';
 import { ProductosService } from '../productos/productos.service';
 

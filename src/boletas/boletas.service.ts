@@ -1,24 +1,30 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  forwardRef,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { CreateBoletaDto } from './dto/create-boleta.dto';
 import { UpdateBoletaDto } from './dto/update-boleta.dto';
 import { Boleta } from './entities/boleta.entity';
 import { VentasService } from '../ventas/ventas.service';
+import { Venta } from '../ventas/entities/venta.entity';
 
 @Injectable()
 export class BoletasService {
   constructor(
     @InjectRepository(Boleta)
     private boletasRepository: Repository<Boleta>,
+    @Inject(forwardRef(() => VentasService))
     private ventasService: VentasService,
   ) {}
 
   async create(createBoletaDto: CreateBoletaDto) {
-    // Verificar que la venta existe
     const venta = await this.ventasService.findOne(createBoletaDto.ventaId);
 
-    // Generar número de boleta
+    // 2. Generar número de boleta (lógica de correlativo)
     const ultimaBoleta = await this.boletasRepository.findOne({
       order: { id: 'DESC' },
     });
@@ -29,13 +35,40 @@ export class BoletasService {
 
     const numeroBoleta = `BOL-${numeroActual.toString().padStart(6, '0')}`;
 
-    // Crear boleta
+    // 3. Crear boleta
     const boleta = this.boletasRepository.create({
       numero: numeroBoleta,
       ventaId: createBoletaDto.ventaId,
       cliente: createBoletaDto.cliente || 'Consumidor Final',
       rut: createBoletaDto.rut,
-      montoTotal: venta.total,
+      montoTotal: venta.total, // Usamos el total de la venta encontrada
+    });
+
+    return await this.boletasRepository.save(boleta);
+  }
+
+  async generarBoletaParaVenta(venta: Venta, cliente?: string, rut?: string) {
+    // Generar número de boleta (misma lógica que ya tienes)
+    // @ts-ignore
+    const ultimasBoletas = await this.boletasRepository.find({
+      order: { id: 'DESC' },
+      take: 1, // Esto es el equivalente a LIMIT 1
+    });
+
+    const ultimaBoleta = ultimasBoletas[0];
+    const numeroActual = ultimaBoleta
+      ? parseInt(ultimaBoleta.numero.split('-')[1]) + 1
+      : 1;
+
+    const numeroBoleta = `BOL-${numeroActual.toString().padStart(6, '0')}`;
+
+    // Crear boleta
+    const boleta = this.boletasRepository.create({
+      numero: numeroBoleta,
+      ventaId: venta.id, // Usamos el ID de la Venta ya guardada
+      cliente: cliente || 'Consumidor Final',
+      rut: rut,
+      montoTotal: venta.total, // Usamos el total de la Venta
     });
 
     return await this.boletasRepository.save(boleta);

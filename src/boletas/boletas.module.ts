@@ -1,5 +1,5 @@
 // boletas/boletas.module.ts
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BoletasService } from './boletas.service';
 import { BoletasController } from './boletas.controller';
@@ -9,9 +9,10 @@ import { VentasModule } from '../ventas/ventas.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Boleta]),
-    VentasModule,
+    forwardRef(() => VentasModule),
   ],
   controllers: [BoletasController],
   providers: [BoletasService],
+  exports: [BoletasService],
 })
 export class BoletasModule {}

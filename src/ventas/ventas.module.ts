@@ -1,15 +1,17 @@
 // ventas/ventas.module.ts
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { VentasService } from './ventas.service';
 import { VentasController } from './ventas.controller';
 import { Venta } from './entities/venta.entity';
 import { ProductosModule } from '../productos/productos.module';
+import { BoletasModule } from '../boletas/boletas.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Venta]),
-    ProductosModule, // Importar para usar ProductosService
+    ProductosModule,
+    forwardRef(() => BoletasModule), // Importar para usar ProductosService
   ],
   controllers: [VentasController],
   providers: [VentasService],

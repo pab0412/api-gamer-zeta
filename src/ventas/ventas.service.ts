@@ -1,4 +1,4 @@
-// ventas/ventas.service.ts
+
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Between, Repository } from 'typeorm';
@@ -6,6 +6,7 @@ import { CreateVentaDto } from './dto/create-venta.dto';
 import { UpdateVentaDto } from './dto/update-venta.dto';
 import { Venta } from './entities/venta.entity';
 import { ProductosService } from '../productos/productos.service';
+import { BoletasService } from '../boletas/boletas.service';
 
 @Injectable()
 export class VentasService {
@@ -13,15 +14,16 @@ export class VentasService {
     @InjectRepository(Venta)
     private ventasRepository: Repository<Venta>,
     private productosService: ProductosService,
+    private boletasService: BoletasService,
   ) {}
 
   async create(createVentaDto: CreateVentaDto) {
-    const { detalleProductos } = createVentaDto;
+    const { detalleProductos, cliente, rut } = createVentaDto as any;
 
-    // Validar y calcular totales
     let subtotal = 0;
     const detalleCompleto = [];
 
+    // Validar stock y calcular totales
     for (const item of detalleProductos) {
       const producto = await this.productosService.findOne(item.productoId);
 
@@ -31,7 +33,6 @@ export class VentasService {
         );
       }
 
-      // Convertir precio a número
       const precioUnitario = Number(producto.precio);
       const subtotalProducto = precioUnitario * item.cantidad;
       subtotal += subtotalProducto;
@@ -53,7 +54,7 @@ export class VentasService {
     const iva = subtotal * 0.19;
     const total = subtotal + iva;
 
-    // Crear venta
+    // Crear la venta
     const venta = this.ventasRepository.create({
       usuarioId: createVentaDto.usuarioId,
       detalleProductos: detalleCompleto,
@@ -64,7 +65,16 @@ export class VentasService {
       estado: 'completada',
     });
 
-    return await this.ventasRepository.save(venta);
+    const ventaGuardada = await this.ventasRepository.save(venta);
+
+    // Generar boleta si hay datos de cliente
+    const boleta = await this.boletasService.generarBoletaParaVenta(
+      ventaGuardada,
+      cliente,
+      rut,
+    );
+
+    return { ...ventaGuardada, boleta };
   }
 
   async findAll() {
@@ -98,7 +108,6 @@ export class VentasService {
   async update(id: number, updateVentaDto: UpdateVentaDto) {
     const venta = await this.findOne(id);
 
-    // Solo permitir actualizar el estado
     if (updateVentaDto.estado) {
       venta.estado = updateVentaDto.estado;
     }

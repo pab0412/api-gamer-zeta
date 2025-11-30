@@ -4,7 +4,7 @@ import { Repository } from 'typeorm';
 import { NotFoundException } from '@nestjs/common';
 import { BoletasService } from './boletas.service';
 import { Boleta } from './entities/boleta.entity';
-import { VentasService } from '../ventas/ventas.service';
+import VentasService from '../ventas/ventas.service';
 
 describe('BoletasService', () => {
   let service: BoletasService;
