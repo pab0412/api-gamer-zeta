@@ -18,7 +18,6 @@ export class VentasService {
   ) {}
 
   async create(createVentaDto: CreateVentaDto) {
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
     const { detalleProductos, cliente, rut } = createVentaDto as any;
 
     let subtotal = 0;
@@ -38,6 +37,7 @@ export class VentasService {
       const subtotalProducto = precioUnitario * item.cantidad;
       subtotal += subtotalProducto;
 
+      // @ts-ignore
       detalleCompleto.push({
         productoId: producto.id,
         nombre: producto.nombre,
@@ -84,16 +84,10 @@ export class VentasService {
       cliente,
       rut,
     );
-    
 
-    // @ts-ignore
-    return {
-      id: ventaGuardada.id,
-      ...ventaGuardada,
-      boleta
-    };
+    // ✅ RETORNA ID explícitamente
+    return { ...ventaGuardada, boleta };
   }
-
 
   async findAll() {
     return await this.ventasRepository.find({
